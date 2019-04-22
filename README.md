@@ -2,4 +2,4 @@
 
 ### Setup Google API Key
 
-Put your Google API Key inside apikey.txt
+Put your Google API Key inside Go/apikey.txt
