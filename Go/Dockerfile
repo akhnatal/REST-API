@@ -14,6 +14,7 @@ COPY --from=builder /go/bin/app /app
 ENTRYPOINT ./app
 LABEL Name=api Version=0.0.1
 EXPOSE 8080
-EXPOSE 33066
+
+COPY apikey.txt apikey.txt
 
 CMD ./start.sh

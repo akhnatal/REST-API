@@ -1,5 +1,5 @@
 
-USE challenge_lalamove;
+USE db_sam;
 CREATE TABLE IF NOT EXISTS orders
 (
     id INT AUTO_INCREMENT PRIMARY KEY,

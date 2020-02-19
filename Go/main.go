@@ -6,11 +6,12 @@ import (
 )
 
 const (
-	dbName = "challenge_lalamove"
+	dbName = "db_sam"
 	dbUser = "tester"
 	dbPass = "test"
-	dbHost = "localhost"
-	dbPort = "33066"
+	//dbHost = "db"
+	dbHost = "192.168.99.100"
+	dbPort = "3306"
 )
 
 //Entry point for the app
@@ -21,7 +22,9 @@ func main() {
 		fmt.Print(err)
 	}
 
-	a := App{}
+	a := App{
+		googleAPIKey: string(googleAPIKey),
+	}
 	//Create database connection  and wire up the routes
 	a.Initialize(dbUser, dbPass, dbName)
 	//Start the application

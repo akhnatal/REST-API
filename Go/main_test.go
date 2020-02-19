@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -15,7 +16,14 @@ import (
 var a App
 
 func TestMain(m *testing.M) {
-	a = App{}
+	googleAPIKey, err := ioutil.ReadFile("apikey.txt") // just pass the file name
+	if err != nil {
+		fmt.Print(err)
+	}
+
+	a = App{
+		googleAPIKey: string(googleAPIKey),
+	}
 	a.Initialize(dbUser, dbPass, dbName)
 	ensureTableExists()
 	code := m.Run()
