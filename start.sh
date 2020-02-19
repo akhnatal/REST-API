@@ -1,7 +1,4 @@
 #!/bin/bash
 
-#Setup application
+#Setup services : db + application
 docker-compose up --build
-#docker build -t app
-
-docker run app

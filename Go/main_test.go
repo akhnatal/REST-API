@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"testing"
 )
 
@@ -80,7 +81,7 @@ func checkResponseCode(t *testing.T, expected, actual int) {
 
 //Manually add a new order to the database and, by accessing the correspondent endpoint,
 //Check if the status code is 201 (resource created) and if the JSON response contains the correct information that was added
-func TestCreateOrder(t *testing.T) {
+func TestPlaceOrder(t *testing.T) {
 	clearTable()
 
 	payload := []byte(`{"origin": ["22.288017", "114.140835"],"destination": ["22.288039", "114.142345"]}`)
@@ -111,13 +112,29 @@ func TestCreateOrder(t *testing.T) {
 //This test basically add a new order to the database and
 //Check if the correct endpoint results in an HTTP response with status code 200 (success)
 func TestListOrders(t *testing.T) {
+	// Parameters we want to test
+	order_nb := 6
+	page := 2
+	limit := 2
 	clearTable()
-	addOrders(1)
+	addOrders(order_nb)
 
-	req, _ := http.NewRequest("GET", "/orders?page=0&limit=10", nil)
+	req, _ := http.NewRequest("GET", "/orders?page="+strconv.Itoa(page)+"&limit="+strconv.Itoa(limit), nil)
 	response := executeRequest(req)
 
 	checkResponseCode(t, http.StatusOK, response.Code)
+
+	var orders []Order
+	json.Unmarshal(response.Body.Bytes(), &orders)
+
+	// Verify that we have the same amount of orders as limit
+	if len(orders) != limit {
+		t.Errorf("Expected %d orders. Got %d orders", order_nb, len(orders))
+	}
+	// Verify page correctly offset the firts orders
+	if orders[0].ID != page {
+		t.Errorf("Expected order ID to be %d. Got order ID %d", (order_nb - page), orders[0].ID)
+	}
 }
 
 //Add a new order to the database for the tests
@@ -136,26 +153,28 @@ func TestTakeOrder(t *testing.T) {
 	clearTable()
 	addOrders(1)
 
-	req, _ := http.NewRequest("GET", "/orders", nil)
-	response := executeRequest(req)
-	var originalOrder map[string]interface{}
-	json.Unmarshal(response.Body.Bytes(), &originalOrder)
-
 	payload := []byte(`{"status":"TAKEN"}`)
 
-	req, _ = http.NewRequest("PATCH", "/orders/1", bytes.NewBuffer(payload))
-	response = executeRequest(req)
+	req, _ := http.NewRequest("PATCH", "/orders/1", bytes.NewBuffer(payload))
+	response := executeRequest(req)
 
 	checkResponseCode(t, http.StatusOK, response.Code)
 
 	var m map[string]interface{}
 	json.Unmarshal(response.Body.Bytes(), &m)
 
-	if m["id"] != originalOrder["id"] {
-		t.Errorf("Expected the id to remain the same (%d). Got %d", originalOrder["id"], m["id"])
+	// Verify th response of the PATCH is SUCCESS
+	if m["status"] != "SUCCESS" {
+		t.Errorf("Expected response status to be SUCCESS. Got %s", m["status"])
 	}
 
-	if m["status"] == originalOrder["status"] {
-		t.Errorf("Expected the status to change from %d to %d. Got %d", originalOrder["status"], m["status"], m["status"])
+	// Verify the status of the updated order
+	req, _ = http.NewRequest("GET", "/orders?page=1&limit=1", nil)
+	response = executeRequest(req)
+	var orders []Order
+	json.Unmarshal(response.Body.Bytes(), &orders)
+
+	if orders[0].Status != "TAKEN" {
+		t.Errorf("Expected updated status to be TAKEN. Got %s", orders[0].Status)
 	}
 }

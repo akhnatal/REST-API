@@ -1,4 +1,4 @@
-package mysql
+package main
 
 import (
 	"database/sql"
@@ -6,6 +6,7 @@ import (
 	"fmt"
 )
 
+// Insert the new order in the database and return its auto incremented ID
 func placeOrder(o Order, db *sql.DB) (Order, error) {
 	query := fmt.Sprintf("INSERT INTO orders(status, distance) VALUES('%s', '%d')", o.Status, o.Distance)
 
@@ -13,6 +14,7 @@ func placeOrder(o Order, db *sql.DB) (Order, error) {
 	if err != nil {
 		return o, err
 	}
+	//Get the ID of the last order inserted
 	err = db.QueryRow("SELECT LAST_INSERT_ID()").Scan(&o.ID)
 	if err != nil {
 		return o, err
@@ -28,7 +30,6 @@ func takeOrder(o Order, db *sql.DB) error {
 	var oTest Order
 
 	errl := db.QueryRow(query).Scan(&oTest.Status)
-
 	if errl != nil {
 		return errors.New("Order doesn't exist")
 	}
@@ -45,7 +46,8 @@ func takeOrder(o Order, db *sql.DB) error {
 //Fetches records from the orders table and limits the number of records based on the limit value passed by parameter
 //Page parameter determines how many records are skipped
 func listOrders(db *sql.DB, page, limit int) ([]Order, error) {
-	query := fmt.Sprintf("SELECT id, status, distance FROM orders LIMIT %d OFFSET %d", limit, page)
+	//Page number must starts with 1
+	query := fmt.Sprintf("SELECT id, status, distance FROM orders LIMIT %d OFFSET %d", limit, page-1)
 	rows, err := db.Query(query)
 
 	if err != nil {

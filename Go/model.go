@@ -1,4 +1,4 @@
-package app
+package main
 
 type Order struct {
 	ID       int    `json:"id,omitempty"`

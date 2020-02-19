@@ -1,4 +1,4 @@
-package app
+package main
 
 import (
 	"database/sql"
@@ -16,7 +16,7 @@ import (
 	"context"
 )
 
-//This structure provides references to the router and the database
+//This structure provides references to the router, the database and the google client
 type App struct {
 	Router       *mux.Router
 	DB           *sql.DB
@@ -47,6 +47,7 @@ func (a *App) placeOrder(w http.ResponseWriter, r *http.Request) {
 	var o Order
 
 	decoder := json.NewDecoder(r.Body)
+	// Verify
 	if err := decoder.Decode(&c); err != nil {
 		respondWithError(w, http.StatusBadRequest, "Invalid request payload, Coordinates should be array of two strings")
 		return
@@ -54,11 +55,13 @@ func (a *App) placeOrder(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 
-	if len(c.Origin) != len(c.Destination) {
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload, amount of original coordinates different from amount of destination")
+	// Verify Coordinates are an array of 2 strings
+	if len(c.Origin) != 2 || len(c.Destination) != 2 {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload, Coordinates in request must be an array of exactly two strings")
 		return
 	}
 
+	// Verify Coordinates can be cast to float, to ensure they conatin digits
 	for i := 0; i < len(c.Origin); i++ {
 		if _, err := strconv.ParseFloat(c.Origin[i], 64); err != nil {
 			respondWithError(w, http.StatusBadRequest, "Invalid request payload, Origin's string is not a number")
@@ -81,6 +84,7 @@ func (a *App) placeOrder(w http.ResponseWriter, r *http.Request) {
 	o.Distance = value
 	o.Status = basicStatus
 
+	// Place the order in the database
 	var errl error
 	o, errl = placeOrder(o, a.DB)
 	if errl != nil {
@@ -113,6 +117,7 @@ func (a *App) takeOrder(w http.ResponseWriter, r *http.Request) {
 	var success Order
 	success.Status = "SUCCESS"
 
+	// Update the order's status in the database
 	if err := takeOrder(o, a.DB); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -122,7 +127,7 @@ func (a *App) takeOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) listOrders(w http.ResponseWriter, r *http.Request) {
-
+	//Verify that page qnd limit are digits and page is not zero
 	limit, err := strconv.Atoi(r.FormValue("limit"))
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Limit should be a valid integer.")
@@ -134,7 +139,12 @@ func (a *App) listOrders(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusBadRequest, "Page should be a valid integer.")
 		return
 	}
+	if page == 0 {
+		respondWithError(w, http.StatusBadRequest, "Page should start with 1.")
+		return
+	}
 
+	// Ask the list of order to the database
 	orders, err := listOrders(a.DB, page, limit)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
@@ -146,16 +156,19 @@ func (a *App) listOrders(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) computeDistance(origin []string, destination []string) (int, error) {
 
+	// Prepare the request for the google maps api
 	r := &maps.DistanceMatrixRequest{
 		Origins:      []string{origin[0] + " " + origin[1]},
 		Destinations: []string{destination[0] + " " + destination[1]},
 	}
 
+	// Call the DistanceMatrix API
 	route, err := a.clientGoogle.DistanceMatrix(context.Background(), r)
 	if err != nil {
 		return -1, err
 	}
 
+	// Extract the distance in meters and verify it's defferent from zero
 	dist := route.Rows[0].Elements[0].Distance.Meters
 	if dist == 0 {
 		return -1, errors.New("Google Maps Distance Matrix API : Coordinates are wrong")

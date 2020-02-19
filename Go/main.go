@@ -9,14 +9,14 @@ const (
 	dbName = "db_sam"
 	dbUser = "tester"
 	dbPass = "test"
-	//dbHost = "db"
-	dbHost = "192.168.99.100"
+	dbHost = "db"
 	dbPort = "3306"
 )
 
 //Entry point for the app
 func main() {
 
+	//Setup the google API key using a txt file
 	googleAPIKey, err := ioutil.ReadFile("apikey.txt") // just pass the file name
 	if err != nil {
 		fmt.Print(err)
